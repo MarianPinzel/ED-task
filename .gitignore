@@ -6,5 +6,7 @@ terraform.tfvars
 crash.log
 *.pem
 *.key
+operator_key
+operator_key.pub
 ПОЯСНЕННЯ.md
 МОЖЛИВІ_ПИТАННЯ.md
