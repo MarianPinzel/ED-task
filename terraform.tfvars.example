@@ -1,0 +1,16 @@
+# Copy this file to terraform.tfvars and fill in real values.
+# terraform.tfvars is git-ignored - NEVER commit it.
+
+aws_region    = "eu-central-1"
+project_name  = "secrets-demo"
+environment   = "dev"
+instance_type = "t3.micro"
+
+# Your public IP in CIDR form, e.g. "203.0.113.10/32"
+operator_cidr = "REPLACE_WITH_YOUR_IP/32"
+
+# Real secret values - pass these via env vars instead of this file when possible:
+#   export TF_VAR_external_api_key="..."
+#   export TF_VAR_ssh_deploy_private_key="$(cat ~/.ssh/deploy_key.pem)"
+external_api_key        = "REPLACE_ME"
+ssh_deploy_private_key  = "REPLACE_ME"

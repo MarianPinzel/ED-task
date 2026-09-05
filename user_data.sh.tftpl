@@ -1,0 +1,55 @@
+#!/bin/bash
+# Runs on first boot. Fetches secrets by NAME only (values are injected by Terraform
+# above only as names, never as literal secret values). Nothing here is echoed
+# or logged - output is redirected away from cloud-init logs where needed.
+set -euo pipefail
+
+REGION="${aws_region}"
+DB_SECRET_NAME="${db_secret_name}"
+API_SECRET_NAME="${api_secret_name}"
+SSH_SECRET_NAME="${ssh_secret_name}"
+
+APP_DIR="/opt/app"
+CONFIG_DIR="$APP_DIR/config"
+mkdir -p "$CONFIG_DIR"
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq unzip >/dev/null
+
+curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+unzip -q /tmp/awscliv2.zip -d /tmp
+/tmp/aws/install >/dev/null
+rm -rf /tmp/awscliv2.zip /tmp/aws
+
+fetch_secret_to_file() {
+  local secret_name="$1"
+  local dest_file="$2"
+
+  aws secretsmanager get-secret-value \
+    --region "$REGION" \
+    --secret-id "$secret_name" \
+    --query SecretString \
+    --output text > "$dest_file"
+
+  chmod 600 "$dest_file"
+  chown app:app "$dest_file" 2>/dev/null || true
+}
+
+useradd -r -s /usr/sbin/nologin app 2>/dev/null || true
+
+fetch_secret_to_file "$DB_SECRET_NAME"  "$CONFIG_DIR/db_password"
+fetch_secret_to_file "$API_SECRET_NAME" "$CONFIG_DIR/api_key.json"
+fetch_secret_to_file "$SSH_SECRET_NAME" "$CONFIG_DIR/deploy_key.pem"
+chmod 400 "$CONFIG_DIR/deploy_key.pem"
+
+for f in db_password api_key.json deploy_key.pem; do
+  if [ -s "$CONFIG_DIR/$f" ]; then
+    logger "secrets-demo: retrieved $f successfully (size only, no content logged)"
+  else
+    logger "secrets-demo: ERROR retrieving $f"
+    exit 1
+  fi
+done
+
+logger "secrets-demo: bootstrap complete, all 3 secrets retrieved"
